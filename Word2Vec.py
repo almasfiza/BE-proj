@@ -7,8 +7,6 @@ import math
 from random import randint
 import pickle
 import os
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 # This Word2Vec implementation is largely based on this paper
 # https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf
@@ -55,8 +53,9 @@ def createTrainingMatrices(dictionary, corpus):
 def getTrainingBatch():
     num = randint(0,numTrainingExamples - batchSize - 1)
     arr = xTrain[num:num + batchSize]
-    labels = yTrain[num:num + batchSize]
-    return arr, labels[:,np.newaxis]
+
+    labels = np.array(yTrain[num:num + batchSize])
+    return arr, labels[:, np.newaxis]
 
 continueWord2Vec = True
 # Loading the data structures if they are present in the directory
@@ -92,10 +91,9 @@ if (continueWord2Vec == False):
 numTrainingExamples = len(xTrain)
 vocabSize = len(wordList)
 
-
-embeddingMatrix = tf.Variable(tf.random.uniform([vocabSize, wordVecDimensions], -1.0, 1.0))
-nceWeights = tf.Variable(tf.random.truncated_normal([vocabSize, wordVecDimensions], stddev=1.0 / math.sqrt(wordVecDimensions)))
-
+sess = tf.Session()
+embeddingMatrix = tf.Variable(tf.random_uniform([vocabSize, wordVecDimensions], -1.0, 1.0))
+nceWeights = tf.Variable(tf.truncated_normal([vocabSize, wordVecDimensions], stddev=1.0 / math.sqrt(wordVecDimensions)))
 nceBiases = tf.Variable(tf.zeros([vocabSize]))
 
 inputs = tf.placeholder(tf.int32, shape=[batchSize])
@@ -113,12 +111,12 @@ loss = tf.reduce_mean(
 
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0).minimize(loss)
 
-tf.global_variables_initializer()
+sess.run(tf.global_variables_initializer())
 for i in range(numIterations):
     trainInputs, trainLabels = getTrainingBatch()
-    _, curLoss = [optimizer, loss], feed_dict={inputs: trainInputs, outputs: trainLabels}
+    _, curLoss = sess.run([optimizer, loss], feed_dict={inputs: trainInputs, outputs: trainLabels})
     if (i % 10000 == 0):
         print ('Current loss is:', curLoss)
 print('Saving the word embedding matrix')
-embedMatrix = embeddingMatrix.eval()
+embedMatrix = embeddingMatrix.eval(session=sess)
 np.save('embeddingMatrix.npy', embedMatrix)
