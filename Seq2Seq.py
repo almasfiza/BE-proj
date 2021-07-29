@@ -9,11 +9,19 @@ import os
 # Removes an annoying Tensorflow warning
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 def createTrainingMatrices(conversationFileName, wList, maxLen):
+    # save np.load
+    np_load_old = np.load
+
+    # modify the default parameters of np.load
+    np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
+
     conversationDictionary = np.load(conversationFileName).item()
+    # restore np.load for future normal usage
+    np.load = np_load_old
     numExamples = len(conversationDictionary)
     xTrain = np.zeros((numExamples, maxLen), dtype='int32')
     yTrain = np.zeros((numExamples, maxLen), dtype='int32')
-    for index,(key,value) in enumerate(conversationDictionary.iteritems()):
+    for index,(key,value) in enumerate(conversationDictionary.items()):
         # Will store integerized representation of strings here (initialized as padding)
         encoderMessage = np.full((maxLen), wList.index('<pad>'), dtype='int32')
         decoderMessage = np.full((maxLen), wList.index('<pad>'), dtype='int32')
